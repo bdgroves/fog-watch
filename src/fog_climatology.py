@@ -45,37 +45,50 @@ for lon, km in TRANSECT:
                   "lat": -23.56, "lon": lon, "km_coast": km})
 
 
-def fetch(site: dict) -> dict:
-    for attempt in range(4):
-        r = requests.get(API, params={
-            "latitude": site["lat"], "longitude": site["lon"],
-            "start_date": START, "end_date": END,
-            "hourly": "cloud_cover_low,relative_humidity_2m",
-            "timezone": "auto",
-        }, timeout=180)
-        if r.status_code == 429:
-            time.sleep(30 * (attempt + 1))
-            continue
-        r.raise_for_status()
-        return r.json()["hourly"]
-    raise RuntimeError(f"rate-limited fetching {site['name']}")
+SESSION = requests.Session()
+SESSION.headers["User-Agent"] = "fog-watch (github.com/bdgroves/fog-watch)"
 
 
-def summarize(h: dict) -> dict:
+def fetch_year(site: dict, year: int) -> dict:
+    """One calendar year of hourly data. Small requests: a 10-year pull timed out."""
+    end = min(f"{year}-12-31", END)
+    wait = 10
+    for attempt in range(6):
+        try:
+            r = SESSION.get(API, params={
+                "latitude": site["lat"], "longitude": site["lon"],
+                "start_date": f"{year}-01-01", "end_date": end,
+                "hourly": "cloud_cover_low,relative_humidity_2m",
+                "timezone": "auto",
+            }, timeout=(15, 90))
+            if r.status_code == 429 or r.status_code >= 500:
+                raise requests.HTTPError(f"HTTP {r.status_code}")
+            r.raise_for_status()
+            return r.json()["hourly"]
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as e:
+            print(f"    retry {attempt + 1} for {site['name']} {year}: {e}")
+            time.sleep(wait)
+            wait = min(wait * 2, 120)
+    raise RuntimeError(f"gave up on {site['name']} {year}")
+
+
+def summarize(site: dict) -> dict:
     fog = [[0] * 24 for _ in range(12)]
     obs = [[0] * 24 for _ in range(12)]
-    for t, low, rh in zip(h["time"], h["cloud_cover_low"], h["relative_humidity_2m"]):
-        if low is None or rh is None:
-            continue
-        m, hr = int(t[5:7]) - 1, int(t[11:13])
-        obs[m][hr] += 1
-        if low >= LOW_CLOUD_MIN and rh >= RH_MIN:
-            fog[m][hr] += 1
+    for year in range(int(START[:4]), int(END[:4]) + 1):
+        h = fetch_year(site, year)
+        for t, low, rh in zip(h["time"], h["cloud_cover_low"], h["relative_humidity_2m"]):
+            if low is None or rh is None:
+                continue
+            m, hr = int(t[5:7]) - 1, int(t[11:13])
+            obs[m][hr] += 1
+            if low >= LOW_CLOUD_MIN and rh >= RH_MIN:
+                fog[m][hr] += 1
+        time.sleep(1.5)  # gentle on Open-Meteo's free tier
     pct = lambda f, n: round(100 * f / n, 1) if n else None
-    monthly = [pct(sum(fog[m]), sum(obs[m])) for m in range(12)]
     return {
         "annual_pct": pct(sum(map(sum, fog)), sum(map(sum, obs))),
-        "monthly_pct": monthly,
+        "monthly_pct": [pct(sum(fog[m]), sum(obs[m])) for m in range(12)],
         "hour_by_month_pct": [[pct(fog[m][h], obs[m][h]) for h in range(24)] for m in range(12)],
     }
 
@@ -83,10 +96,15 @@ def summarize(h: dict) -> dict:
 def main() -> None:
     out = []
     for s in SITES:
-        stats = summarize(fetch(s))
+        try:
+            stats = summarize(s)
+        except RuntimeError as e:
+            print(f"  ⚠ skipping {s['name']}: {e}")
+            continue
         out.append({**s, **stats})
         print(f"{s['name']:<18} {s['region']:<15} fog {stats['annual_pct']:>5}% of hours")
-        time.sleep(8)  # stay well under Open-Meteo's per-minute limit
+    if not out:
+        raise SystemExit("no sites fetched; Open-Meteo unreachable?")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({
         "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
