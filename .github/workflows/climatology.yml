@@ -1,0 +1,27 @@
+name: Fog climatology
+
+on:
+  schedule:
+    - cron: "23 7 3 * *"   # monthly, 3rd at 07:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          cache: false
+          environments: default
+      - run: pixi run climatology
+      - name: Commit data
+        run: |
+          git config user.name "fog-watch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data/fog.json
+          git diff --cached --quiet || git commit -m "data: fog climatology refresh"
+          git push

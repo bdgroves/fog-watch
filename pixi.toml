@@ -5,8 +5,17 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 [dependencies]
 python = ">=3.11"
+requests = "*"
+
+[feature.ee.dependencies]
 earthengine-api = "*"
 
+[environments]
+ee = ["ee"]
+
 [tasks]
-fog = "python src/fog_frequency.py"
+climatology = "python src/fog_climatology.py"
 serve = "python -m http.server 8000 --directory docs"
+
+[feature.ee.tasks]
+fog-satellite = "python src/fog_frequency.py"
