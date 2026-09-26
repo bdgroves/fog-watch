@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FOG-WATCH</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root {
     color-scheme: dark;
@@ -46,6 +47,26 @@
   th:first-child, td:first-child { text-align: left; }
   .note { border-left: 2px solid var(--teal); padding-left: 14px; color: var(--muted); font-size: 14px; }
   #empty { margin-top: 32px; }
+  /* fog map */
+  .mapwrap { position: relative; margin-top: 16px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  #fogmap { height: min(72vh, 620px); background: var(--navy); }
+  .mapbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { background: var(--panel); color: var(--muted); border: 0; font: 12px var(--mono); letter-spacing: .06em; padding: 7px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: var(--navy); font-weight: 600; }
+  .seg button:focus-visible, .play:focus-visible, #month:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .monthctl { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; }
+  #month { flex: 1; accent-color: var(--teal); }
+  #month-label { font: 600 13px var(--mono); color: var(--text); min-width: 5.5em; }
+  .play { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; font: 12px var(--mono); padding: 6px 10px; cursor: pointer; }
+  .maplegend { position: absolute; right: 12px; bottom: 26px; z-index: 500; background: rgba(11,22,34,.88); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: 11px var(--mono); color: var(--text); }
+  .maplegend .ramp { width: 160px; height: 10px; border-radius: 2px; margin: 6px 0 3px; }
+  .maplegend .ends { display: flex; justify-content: space-between; color: var(--muted); }
+  .leaflet-container { font: 12px var(--mono); }
+  .leaflet-tooltip.fogtip { background: var(--navy); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
+  .leaflet-tooltip.sitelbl { background: transparent; border: 0; box-shadow: none; color: #fff; font: 600 11px var(--mono); text-shadow: 0 0 3px #000, 0 0 6px #000; padding: 0; }
+  .leaflet-tooltip.sitelbl::before { display: none; }
+  .leaflet-control-layers { background: var(--panel); color: var(--text); border: 1px solid var(--line) !important; }
   footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
   a { color: var(--teal); }
 </style>
@@ -56,6 +77,24 @@
   <h1>Where the fog lives</h1>
   <p class="lede">The Namib is one of the driest places on Earth, and it runs on fog. Cold water from the Benguela Current chills the air over the Atlantic, and most mornings a grey wall of it rolls in over Walvis Bay and Swakopmund and far across the dunes. Beetles stand on their heads on the dune crests to drink it. Lichen fields and welwitschia live on it. At Gobabeb, 56 km inland, fog can bring in more water in a year than rain does.</p>
   <p>In 2026, Ferran Garcia-Pichel's lab at Arizona State reported bacteria that live and feed inside fog itself. If fog is a habitat, it needs a map. FOG-WATCH starts with the question every field team asks first: where and when is the fog most reliable?</p>
+
+  <section id="map-section" hidden>
+    <h2>The fog blanket</h2>
+    <p class="muted">Share of hours that were foggy in each 0.25° ERA5 grid cell, over satellite imagery. Pick a coast, then drag or play through the months to watch the fog season move.</p>
+    <div class="mapbar">
+      <div class="seg" role="group" aria-label="Region" id="region-seg"></div>
+      <div class="monthctl">
+        <button class="play" id="play" type="button" aria-label="Play months">▶ Play</button>
+        <input type="range" id="month" min="0" max="12" value="0" step="1" aria-label="Month">
+        <span id="month-label">All year</span>
+      </div>
+    </div>
+    <div class="mapwrap">
+      <div id="fogmap"></div>
+      <div class="maplegend"><div>Foggy hours</div><div class="ramp" id="map-ramp"></div><div class="ends"><span>0%</span><span id="map-max"></span></div></div>
+    </div>
+    <p class="muted" style="font-size:13px;margin-top:8px" id="map-note"></p>
+  </section>
 
   <div id="empty" class="panel" hidden>
     <h2>No data yet</h2>
@@ -264,6 +303,94 @@ function coasts(byId) {
     series.map(s => `<tr><td>${s.label}</td>${s.vals.map(v => `<td>${v ?? "–"}</td>`).join("")}</tr>`).join("") +
     `</tbody></table>`;
 }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  const MON = ["All year","January","February","March","April","May","June","July","August","September","October","November","December"];
+  const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+  const map = L.map("fogmap", { zoomSnap: 0.25, preferCanvas: true, scrollWheelZoom: false });
+  const imagery = L.tileLayer(ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { maxNativeZoom: 17, maxZoom: 19, attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics" });
+  const dark = L.tileLayer(ESRI + "Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    { maxNativeZoom: 16, maxZoom: 19, attribution: "Tiles &copy; Esri" });
+  map.createPane("labels");
+  map.getPane("labels").style.zIndex = 450;
+  map.getPane("labels").style.pointerEvents = "none";
+  const labels = L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    { maxNativeZoom: 16, maxZoom: 19, pane: "labels" });
+  imagery.addTo(map);
+  L.control.layers({ "Satellite": imagery, "Dark": dark }, { "Place names": labels }, { collapsed: true }).addTo(map);
+  // fog ramp: clear → pale teal → white, with opacity rising alongside
+  const C0 = [45, 212, 191], C1 = [255, 255, 255];
+  const mix = t => C0.map((c, i) => Math.round(c + (C1[i] - c) * t));
+  document.getElementById("map-ramp").style.background =
+    "linear-gradient(90deg, rgba(45,212,191,.12), rgba(45,212,191,.55), rgba(255,255,255,.9))";
+  const cellLayer = L.layerGroup().addTo(map), siteLayer = L.layerGroup().addTo(map);
+  let data, region = "namib", month = 0, max = 10, timer = null;
+
+  function val(c) { return month === 0 ? c.a : c.m[month - 1]; }
+  function draw() {
+    const reg = data.regions[region], h = reg.step / 2;
+    max = Math.max(4, ...reg.cells.map(c => Math.max(c.a ?? 0, ...c.m.map(v => v ?? 0))));
+    document.getElementById("map-max").textContent = Math.round(max) + "%";
+    document.getElementById("month-label").textContent = MON[month];
+    cellLayer.clearLayers();
+    for (const c of reg.cells) {
+      const v = val(c);
+      if (v == null) continue;
+      const t = Math.min(1, v / max);
+      const [r, g, b] = mix(t);
+      L.rectangle([[c.lat - h, c.lon - h], [c.lat + h, c.lon + h]], {
+        stroke: false, fillColor: `rgb(${r},${g},${b})`, fillOpacity: t < 0.03 ? 0 : 0.12 + 0.72 * t,
+      }).bindTooltip(`${c.lat.toFixed(2)}°, ${c.lon.toFixed(2)}°<br><b>${v}%</b> of hours foggy · ${MON[month]}`,
+        { className: "fogtip", sticky: true }).addTo(cellLayer);
+    }
+  }
+  function setRegion(k, fit) {
+    region = k;
+    document.querySelectorAll("#region-seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === k));
+    const reg = data.regions[k], lats = reg.cells.map(c => c.lat), lons = reg.cells.map(c => c.lon);
+    if (fit) map.fitBounds([[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]], { padding: [10, 10] });
+    draw();
+  }
+  function addSites(fog) {
+    if (!fog) return;
+    fog.sites.filter(s => !s.region.includes("transect")).forEach(s => {
+      L.circleMarker([s.lat, s.lon], { radius: 5, color: "#0b1622", weight: 2, fillColor: "#d97706", fillOpacity: 1 })
+        .bindTooltip(s.name, { permanent: true, direction: "right", offset: [6, 0], className: "sitelbl" })
+        .addTo(siteLayer);
+    });
+  }
+  const slider = document.getElementById("month"), play = document.getElementById("play");
+  slider.addEventListener("input", () => { month = +slider.value; draw(); });
+  play.addEventListener("click", () => {
+    if (timer) { clearInterval(timer); timer = null; play.textContent = "▶ Play"; return; }
+    play.textContent = "❚❚ Pause";
+    timer = setInterval(() => { month = month % 12 + 1; slider.value = month; draw(); }, 900);
+  });
+
+  Promise.all([
+    fetch("data/fog_grid.json").then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch("data/fog.json").then(r => r.ok ? r.json() : null).catch(() => null),
+  ]).then(([grid, fog]) => {
+    if (!grid) return;
+    data = grid;
+    document.getElementById("map-section").hidden = false;
+    const seg = document.getElementById("region-seg");
+    Object.entries(grid.regions).forEach(([k, r]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = r.name; b.dataset.k = k;
+      b.onclick = () => setRegion(k, true);
+      seg.appendChild(b);
+    });
+    document.getElementById("map-note").textContent =
+      `ERA5 via Open-Meteo, ${grid.period[0].slice(0,4)}–${grid.period[1].slice(0,4)}. Each square is one reanalysis grid cell (~25 km), so the fog edge is blocky by design. Offshore cells show the fog bank over the cold current.`;
+    map.invalidateSize();
+    setRegion("namib", true);
+    addSites(fog);
+  });
+})();
 </script>
 </body>
 </html>

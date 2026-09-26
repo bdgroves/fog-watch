@@ -15,6 +15,7 @@ ee = ["ee"]
 
 [tasks]
 climatology = "python src/fog_climatology.py"
+grid = "python src/fog_grid.py"
 serve = "python -m http.server 8000 --directory docs"
 
 [feature.ee.tasks]

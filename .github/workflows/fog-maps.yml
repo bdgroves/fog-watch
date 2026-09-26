@@ -1,0 +1,29 @@
+name: Fog maps
+
+on:
+  schedule:
+    - cron: "41 8 4 * *"   # monthly, 4th at 08:41 UTC (day after the climatology run)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          cache: false
+          environments: default
+      - run: pixi run grid
+      - name: Commit data
+        run: |
+          git config user.name "fog-watch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data/fog_grid.json
+          git diff --cached --quiet || git commit -m "data: fog grid refresh"
+          git pull --rebase
+          git push

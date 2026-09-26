@@ -16,7 +16,8 @@ Fog isn't just weather. In 2026, Ferran Garcia-Pichel's team at Arizona State re
 |---|---|
 | Fog climatology from ERA5 via Open-Meteo, no API key (`src/fog_climatology.py`) | ✅ written — run the **Fog climatology** Action |
 | Landing page charts: Namib inland transect · hour × month heatmap · three coasts | ✅ built, read `docs/data/fog.json` |
-| Monthly auto-refresh | ✅ wired |
+| Fog-blanket maps: 0.25° ERA5 grid over Namib, Atacama, California, month slider (`src/fog_grid.py`) | ✅ built — run the **Fog maps** Action |
+| Monthly auto-refresh | ✅ wired (climatology on the 3rd, maps on the 4th) |
 | Satellite fog frequency, MODIS via Earth Engine (`src/fog_frequency.py`) | ✅ written, needs an Earth Engine project |
 | True fog vs. high-cloud separation (GOES + DEM) | ⬜ later |
 | Candidate sampling-site ranking | ⬜ later |
@@ -40,6 +41,7 @@ Fog isn't just weather. In 2026, Ferran Garcia-Pichel's team at Arizona State re
 ```bash
 pixi install
 pixi run climatology                          # writes docs/data/fog.json
+pixi run grid                                 # writes docs/data/fog_grid.json (~15 min)
 pixi run serve                                # http://localhost:8000
 EE_PROJECT=your-gee-project pixi run -e ee fog-satellite   # optional, needs `earthengine authenticate`
 ```
