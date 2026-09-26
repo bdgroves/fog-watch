@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOG-WATCH</title>
+<style>
+  :root { --navy:#0b1622; --panel:#111f2e; --line:#1e3246; --teal:#2dd4bf; --text:#d7e3ee; --muted:#7f95aa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--navy); color:var(--text); font:17px/1.6 -apple-system,"Segoe UI",Inter,sans-serif; padding-inline:20px; }
+  main { max-width:760px; margin:0 auto; padding-block:64px; }
+  .k { font:600 12px/1 ui-monospace,Menlo,monospace; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); }
+  h1 { font-size:clamp(36px,6vw,56px); line-height:1.05; margin:14px 0 18px; letter-spacing:.02em; }
+  p { margin:0 0 1em; }
+  .box { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:20px 22px; margin-top:28px; }
+  .box h2 { font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+  ul { margin:0; padding-left:1.2em; } li { margin:.3em 0; }
+  a { color:var(--teal); }
+  footer { margin-top:40px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="k">GeoAI & Remote Sensing Lab · under construction</div>
+  <h1>🌫️ FOG-WATCH</h1>
+  <p>Fog isn't just weather. In 2026, Ferran Garcia-Pichel's team at Arizona State reported bacteria that live and feed inside fog droplets, with pigments that shield them from UV. If fog is a habitat, it needs a habitat map. FOG-WATCH builds a rolling fog-frequency heatmap for the world's great fog coasts from free satellite data and flags the foggiest, most reachable spots as candidate sampling sites.</p>
+  <div class="box"><h2>Data</h2><ul><li>MODIS Terra morning cloud flags (fog proxy)</li><li>GOES-18 low cloud & fog (later)</li><li>Sentinel-2 NDVI · Copernicus DEM</li></ul></div>
+  <div class="box"><h2>Roadmap</h2><ul><li>Monthly fog-frequency rasters for three fog coasts</li><li>Separate fog from high cloud using terrain and cloud-top data</li><li>Rank candidate sampling sites (fog frequency × road access)</li><li>Leaflet heatmap + monthly GitHub Action</li></ul></div>
+  <footer>Brooks Groves · <a href="https://brooksgroves.com">brooksgroves.com</a> · <a href="https://github.com/bdgroves/fog-watch">GitHub</a></footer>
+</main>
+</body>
+</html>

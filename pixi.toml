@@ -1,0 +1,12 @@
+[workspace]
+name = "fog-watch"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[dependencies]
+python = ">=3.11"
+earthengine-api = "*"
+
+[tasks]
+fog = "python src/fog_frequency.py"
+serve = "python -m http.server 8000 --directory docs"
