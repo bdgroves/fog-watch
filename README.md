@@ -4,7 +4,7 @@
 
 Fog isn't just weather. In 2026, Ferran Garcia-Pichel's team at Arizona State reported bacteria that live and feed inside fog droplets, with pigments that shield them from UV. If fog is a habitat, it needs a habitat map. FOG-WATCH builds a rolling fog-frequency heatmap for the world's great fog coasts from free satellite data and flags the foggiest, most reachable spots as candidate sampling sites.
 
-**🌐 Live site: [brooksgroves.com/fog-watch](https://brooksgroves.com/fog-watch/)**
+**🌐 Live site: [brooksgroves.com/fog-watch](https://brooksgroves.com/fog-watch/)** · 📝 [Where the Fog Lives](https://brooksgroves.com/blog/where-the-fog-lives.html)
 
 > Part of the GeoAI & Remote Sensing Lab · sibling of [ANOLE-WATCH](https://github.com/bdgroves/Anole-watch) and [ALPINE-WATCH](https://github.com/bdgroves/Alpine-watch)
 
