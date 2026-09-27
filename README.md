@@ -16,8 +16,8 @@ Fog isn't just weather. In 2026, Ferran Garcia-Pichel's team at Arizona State re
 |---|---|
 | Fog climatology from ERA5 via Open-Meteo, no API key (`src/fog_climatology.py`) | ✅ written — run the **Fog climatology** Action |
 | Landing page charts: Namib inland transect · hour × month heatmap · three coasts | ✅ built, read `docs/data/fog.json` |
-| Fog-blanket maps: 0.25° ERA5 grid over Namib, Atacama, California, month slider (`src/fog_grid.py`) | ✅ built — run the **Fog maps** Action |
-| Monthly auto-refresh | ✅ wired (climatology on the 3rd, maps on the 4th) |
+| Fog-blanket maps: 0.25° ERA5 grid over Namib, Atacama, California, month slider (`src/fog_grid.py`) | ✅ built — run the **Fog maps** Action once per coast (pick the region) |
+| Monthly auto-refresh | ✅ wired (climatology on the 3rd; maps one coast per day, 4th–6th) |
 | Satellite fog frequency, MODIS via Earth Engine (`src/fog_frequency.py`) | ✅ written, needs an Earth Engine project |
 | True fog vs. high-cloud separation (GOES + DEM) | ⬜ later |
 | Candidate sampling-site ranking | ⬜ later |
@@ -41,7 +41,7 @@ Fog isn't just weather. In 2026, Ferran Garcia-Pichel's team at Arizona State re
 ```bash
 pixi install
 pixi run climatology                          # writes docs/data/fog.json
-pixi run grid                                 # writes docs/data/fog_grid.json (~15 min)
+pixi run python src/fog_grid.py namib        # one coast per run: namib | atacama | california
 pixi run serve                                # http://localhost:8000
 EE_PROJECT=your-gee-project pixi run -e ee fog-satellite   # optional, needs `earthengine authenticate`
 ```

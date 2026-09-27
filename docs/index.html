@@ -385,9 +385,9 @@ function coasts(byId) {
       seg.appendChild(b);
     });
     document.getElementById("map-note").textContent =
-      `ERA5 via Open-Meteo, ${grid.period[0].slice(0,4)}–${grid.period[1].slice(0,4)}. Each square is one reanalysis grid cell (~25 km), so the fog edge is blocky by design. Offshore cells show the fog bank over the cold current.`;
+      `ERA5 via Open-Meteo, ${grid.period[0].slice(0,4)}. Each square is one reanalysis grid cell (~25 km), so the fog edge is blocky by design. Offshore cells show the fog bank over the cold current.`;
     map.invalidateSize();
-    setRegion("namib", true);
+    setRegion(grid.regions.namib ? "namib" : Object.keys(grid.regions)[0], true);
     addSites(fog);
   });
 })();

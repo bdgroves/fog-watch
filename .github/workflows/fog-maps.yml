@@ -2,8 +2,14 @@ name: Fog maps
 
 on:
   schedule:
-    - cron: "41 8 4 * *"   # monthly, 4th at 08:41 UTC (day after the climatology run)
+    - cron: "41 8 4-6 * *"   # 4th Namib, 5th Atacama, 6th California (one region per day keeps us inside Open-Meteo's free tier)
   workflow_dispatch:
+    inputs:
+      region:
+        description: "Which coast to (re)build"
+        type: choice
+        options: [namib, atacama, california]
+        default: namib
 
 permissions:
   contents: write
@@ -18,12 +24,13 @@ jobs:
         with:
           cache: false
           environments: default
-      - run: pixi run grid
+      - run: pixi run python src/fog_grid.py ${{ inputs.region || 'auto' }}
       - name: Commit data
         run: |
           git config user.name "fog-watch-bot"
           git config user.email "actions@users.noreply.github.com"
           git add docs/data/fog_grid.json
-          git diff --cached --quiet || git commit -m "data: fog grid refresh"
+          git diff --cached --quiet && exit 0
+          git commit -m "data: fog grid (${{ inputs.region || 'auto' }})"
           git pull --rebase
           git push
